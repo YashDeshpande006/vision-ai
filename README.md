@@ -10,7 +10,7 @@
 
 **A real-time image analysis web application combining object detection and AI-generated scene captioning.**
 
-[Features](#-features) · [Demo](#-demo) · [Getting Started](#-getting-started) · [API Reference](#-api-reference) · [Tech Stack](#-tech-stack)
+[Features](#-features) · [Getting Started](#-getting-started) · [API Reference](#-api-reference) · [Tech Stack](#-tech-stack)
 
 </div>
 
@@ -26,25 +26,7 @@
 
 ---
 
-## 🖥️ Demo
 
-> Upload any image via the web UI or API and get back:
-> - A natural language **scene description**
-> - A list of **detected objects** with their counts
-
-**Example Response:**
-```json
-{
-  "scene_description": "a group of people sitting around a table with laptops",
-  "objects_detected": [
-    { "object": "person", "count": 4 },
-    { "object": "laptop", "count": 3 },
-    { "object": "chair", "count": 4 }
-  ]
-}
-```
-
----
 
 ## 🚀 Getting Started
 
