@@ -132,7 +132,7 @@ vision-ai/
 
 ## 🎓 About
 
-This project was built as part of **Project Exhibition 2** for Semester 5 of the B.E. Computer Engineering program. It demonstrates the integration of two state-of-the-art computer vision models into a unified, production-ready REST API.
+This project was built as part of **Project Exhibition 2** of the B.Tech. Computer Science and Engineering program. It demonstrates the integration of two state-of-the-art computer vision models into a unified, production-ready REST API.
 
 ---
 
