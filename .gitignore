@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# Model weights (large binary files - auto-downloaded by ultralytics)
+*.pt
+*.pth
+*.onnx
+*.weights
+
+# HuggingFace model cache
+.cache/
+~/.cache/huggingface/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Logs
+*.log
+logs/
+
+# Jupyter
+.ipynb_checkpoints/

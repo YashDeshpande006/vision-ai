@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VisionAI — Image Analysis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #08080e;
+      --surface: #0f0f1a;
+      --border: rgba(255,255,255,0.07);
+      --accent: #7b6dff;
+      --accent2: #ff6b9d;
+      --accent3: #00e5c0;
+      --text: #e8e6ff;
+      --muted: #6b6888;
+      --glow: rgba(123,109,255,0.25);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── BACKGROUND ─────────────────────────────── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(123,109,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(123,109,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .bg-orb {
+      position: fixed; z-index: 0; border-radius: 50%;
+      filter: blur(80px); pointer-events: none; opacity: 0.35;
+    }
+    .orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, #7b6dff 0%, transparent 70%); top: -100px; left: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, #ff6b9d 0%, transparent 70%); bottom: -50px; right: -80px; }
+    .orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, #00e5c0 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%,-50%); opacity: 0.15; }
+
+    /* ─── LAYOUT ─────────────────────────────────── */
+    .wrapper { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ─── HEADER ─────────────────────────────────── */
+    header {
+      padding: 48px 0 56px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      animation: fadeUp 0.8s ease both;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent3);
+      background: rgba(0,229,192,0.08); border: 1px solid rgba(0,229,192,0.2);
+      padding: 5px 12px; border-radius: 100px; margin-bottom: 24px;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent3); animation: pulse 2s infinite; }
+
+    h1 {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      margin-top: 16px; font-size: 1rem; color: var(--muted); max-width: 440px; line-height: 1.6;
+    }
+
+    /* ─── UPLOAD ZONE ────────────────────────────── */
+    .upload-card {
+      background: var(--surface);
+      border: 1.5px dashed rgba(123,109,255,0.3);
+      border-radius: 20px;
+      padding: 48px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.8s 0.15s ease both;
+    }
+
+    .upload-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(123,109,255,0.08), transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+
+    .upload-card:hover { border-color: var(--accent); background: rgba(123,109,255,0.05); box-shadow: 0 0 40px var(--glow); }
+    .upload-card:hover::before { opacity: 1; }
+    .upload-card.drag-over { border-color: var(--accent3); box-shadow: 0 0 40px rgba(0,229,192,0.2); }
+
+    .upload-icon {
+      width: 64px; height: 64px; margin: 0 auto 20px;
+      background: linear-gradient(135deg, rgba(123,109,255,0.2), rgba(255,107,157,0.15));
+      border-radius: 18px; display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      border: 1px solid rgba(123,109,255,0.2);
+    }
+
+    .upload-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.15rem; margin-bottom: 8px; }
+    .upload-sub { font-size: 0.85rem; color: var(--muted); }
+    .upload-sub span { color: var(--accent); font-weight: 500; cursor: pointer; }
+
+    #file-input { display: none; }
+
+    /* ─── PREVIEW ────────────────────────────────── */
+    .preview-wrap {
+      margin-top: 24px; display: none;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      animation: fadeUp 0.5s ease both;
+    }
+    .preview-wrap.visible { display: block; }
+
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted);
+    }
+
+    .preview-header button {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 18px; transition: color 0.2s;
+    }
+    .preview-header button:hover { color: var(--accent2); }
+
+    #preview-img {
+      width: 100%; max-height: 340px; object-fit: cover; display: block;
+    }
+
+    /* ─── ANALYZE BUTTON ─────────────────────────── */
+    .btn-analyze {
+      margin-top: 24px; width: 100%;
+      padding: 16px 24px;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: 0.02em;
+      background: linear-gradient(135deg, var(--accent), #a06bff);
+      border: none; border-radius: 14px; color: #fff;
+      cursor: pointer; transition: opacity 0.2s, transform 0.2s, box-shadow 0.3s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 8px 32px rgba(123,109,255,0.35);
+      animation: fadeUp 0.8s 0.3s ease both;
+    }
+    .btn-analyze:hover:not(:disabled) { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(123,109,255,0.5); }
+    .btn-analyze:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-analyze .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .btn-analyze.loading .spinner { display: block; }
+    .btn-analyze.loading .btn-text { display: none; }
+
+    /* ─── RESULTS ────────────────────────────────── */
+    #results {
+      display: none; margin-top: 32px;
+      animation: fadeUp 0.6s ease both;
+    }
+    #results.visible { display: block; }
+
+    .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width: 600px){ .results-grid { grid-template-columns: 1fr; } }
+
+    .result-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; position: relative; overflow: hidden;
+    }
+    .result-card::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .result-card.caption::after { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .result-card.objects::after { background: linear-gradient(90deg, var(--accent3), #00b4d8); }
+
+    .card-label {
+      font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-label::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+    .result-card.caption .card-label { color: var(--accent); }
+    .result-card.objects .card-label { color: var(--accent3); }
+
+    .caption-text {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem;
+      line-height: 1.45; color: var(--text);
+    }
+
+    .objects-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .obj-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+    }
+
+    .obj-name { font-size: 0.9rem; font-weight: 500; text-transform: capitalize; }
+    .obj-count {
+      font-family: 'DM Mono', monospace; font-size: 13px;
+      background: rgba(0,229,192,0.12); color: var(--accent3);
+      padding: 2px 10px; border-radius: 100px;
+    }
+
+    /* Object confidence bar */
+    .obj-bar-wrap { width: 100%; height: 2px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-top: 6px; }
+    .obj-bar { height: 100%; background: linear-gradient(90deg, var(--accent3), #00b4d8); border-radius: 2px; transition: width 1s ease; }
+
+    /* ─── ERROR ──────────────────────────────────── */
+    .error-box {
+      display: none; margin-top: 24px;
+      background: rgba(255,107,157,0.07); border: 1px solid rgba(255,107,157,0.25);
+      border-radius: 14px; padding: 20px 24px;
+      font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent2);
+      animation: fadeUp 0.4s ease both;
+    }
+    .error-box.visible { display: flex; align-items: center; gap: 12px; }
+
+    /* ─── API DOCS STRIP ──────────────────────────── */
+    .api-strip {
+      margin-top: 48px; padding: 28px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 20px;
+      animation: fadeUp 0.8s 0.4s ease both;
+    }
+    .api-strip h2 { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; }
+    .endpoint {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+    }
+    .method {
+      font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 400;
+      padding: 3px 8px; border-radius: 6px; text-transform: uppercase;
+    }
+    .method.get { background: rgba(0,229,192,0.12); color: var(--accent3); }
+    .method.post { background: rgba(123,109,255,0.15); color: var(--accent); }
+    .endpoint-path { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text); }
+    .endpoint-desc { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+    /* ─── FOOTER ─────────────────────────────────── */
+    footer {
+      margin-top: 64px; text-align: center;
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--muted); letter-spacing: 0.08em;
+      animation: fadeUp 0.8s 0.5s ease both;
+    }
+    footer span { color: var(--accent); }
+
+    /* ─── ANIMATIONS ─────────────────────────────── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <div class="wrapper">
+    <header>
+      <div class="badge">Powered by YOLOv8 + BLIP</div>
+      <h1>Vision<span class="grad">AI</span></h1>
+      <p class="subtitle">Upload any image and get instant scene descriptions with object detection — in one click.</p>
+    </header>
+
+    <!-- Upload -->
+    <div class="upload-card" id="drop-zone">
+      <input type="file" id="file-input" accept="image/*"/>
+      <div class="upload-icon">🖼️</div>
+      <div class="upload-title">Drop your image here</div>
+      <p class="upload-sub">or <span onclick="document.getElementById('file-input').click()">browse files</span> · PNG, JPG, WEBP</p>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-wrap" id="preview-wrap">
+      <div class="preview-header">
+        <span id="file-name-label">image.jpg</span>
+        <button id="clear-btn" title="Remove">✕</button>
+      </div>
+      <img id="preview-img" src="" alt="preview"/>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="error-box">
+      <span>⚠</span> <span id="error-msg"></span>
+    </div>
+
+    <!-- Analyze -->
+    <button class="btn-analyze" id="analyze-btn" disabled>
+      <div class="spinner"></div>
+      <span class="btn-text">✦ &nbsp;Analyze Image</span>
+    </button>
+
+    <!-- Results -->
+    <div id="results">
+      <div class="results-grid">
+        <div class="result-card caption">
+          <div class="card-label">Scene Description</div>
+          <p class="caption-text" id="caption-out">—</p>
+        </div>
+        <div class="result-card objects">
+          <div class="card-label">Objects Detected</div>
+          <div class="objects-list" id="objects-out"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Docs -->
+    <div class="api-strip">
+      <h2>API Endpoints</h2>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/</span>
+        <span class="endpoint-desc">Health check</span>
+      </div>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/analyze-image</span>
+        <span class="endpoint-desc">Upload &amp; analyze image file</span>
+      </div>
+    </div>
+
+    <footer>Built with <span>FastAPI · YOLOv8 · BLIP</span> — VisionAI</footer>
+  </div>
+
+  <script>
+    const API_URL = 'http://127.0.0.1:8000';
+
+    const dropZone   = document.getElementById('drop-zone');
+    const fileInput  = document.getElementById('file-input');
+    const previewWrap= document.getElementById('preview-wrap');
+    const previewImg = document.getElementById('preview-img');
+    const fileLabel  = document.getElementById('file-name-label');
+    const clearBtn   = document.getElementById('clear-btn');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const results    = document.getElementById('results');
+    const captionOut = document.getElementById('caption-out');
+    const objectsOut = document.getElementById('objects-out');
+    const errorBox   = document.getElementById('error-box');
+    const errorMsg   = document.getElementById('error-msg');
+
+    let selectedFile = null;
+
+    function showError(msg) {
+      errorBox.classList.add('visible');
+      errorMsg.textContent = msg;
+    }
+    function hideError() { errorBox.classList.remove('visible'); }
+
+    function loadFile(file) {
+      if (!file || !file.type.startsWith('image/')) { showError('Please upload a valid image file.'); return; }
+      hideError();
+      selectedFile = file;
+      const url = URL.createObjectURL(file);
+      previewImg.src = url;
+      fileLabel.textContent = file.name;
+      previewWrap.classList.add('visible');
+      analyzeBtn.disabled = false;
+      results.classList.remove('visible');
+    }
+
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault(); dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      selectedFile = null; previewImg.src = '';
+      previewWrap.classList.remove('visible');
+      fileInput.value = '';
+      analyzeBtn.disabled = true;
+      results.classList.remove('visible');
+      hideError();
+    });
+
+    analyzeBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      hideError();
+      analyzeBtn.disabled = true;
+      analyzeBtn.classList.add('loading');
+      results.classList.remove('visible');
+
+      try {
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const res = await fetch(`${API_URL}/analyze-image`, { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        // Caption
+        captionOut.textContent = data.scene_description || '—';
+
+        // Objects
+        objectsOut.innerHTML = '';
+        const objs = data.objects_detected || [];
+        if (objs.length === 0) {
+          objectsOut.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">No objects detected.</p>';
+        } else {
+          const maxCount = Math.max(...objs.map(o => o.count));
+          objs.forEach(({ object, count }) => {
+            const pct = Math.round((count / maxCount) * 100);
+            objectsOut.innerHTML += `
+              <div class="obj-item">
+                <div>
+                  <div class="obj-name">${object}</div>
+                  <div class="obj-bar-wrap"><div class="obj-bar" style="width:${pct}%"></div></div>
+                </div>
+                <span class="obj-count">×${count}</span>
+              </div>`;
+          });
+        }
+
+        results.classList.add('visible');
+      } catch (err) {
+        showError(err.message || 'Failed to connect to the API. Make sure the server is running.');
+      } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('loading');
+      }
+    });
+  </script>
+</body>
+</html>

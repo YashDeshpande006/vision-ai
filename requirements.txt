@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pillow
+ultralytics
+transformers
+torch
+python-multipart
